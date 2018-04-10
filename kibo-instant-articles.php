@@ -2,8 +2,8 @@
 /*
 Plugin Name: Instant Articles Fixes
 Description: Adds MyElementGetter with extra options for Instant Articles. Disables responsive images for Instant Articles.
-Version: 1.2.0
-Author: <a href="https://peschar.net/">Albert Peschar</a>
+Version: 1.3.0
+Author: <a href="https://peschar.net/">Albert Peschar (Kibo IT)</a>
 */
 
 // Smarter ad placement.
@@ -18,43 +18,9 @@ function kiia_load() {
     }
 }
 
-// Undo WP responsive images in Instant Articles.
-add_action('instant_articles_parsed_document', 'kiia_fix_responsive_img');
-
-function kiia_fix_responsive_img($doc) {
-    if (!($doc instanceof DOMDocument)) {
-        return $doc;
-    }
-    foreach ($doc->getElementsByTagName('img') as $img) {
-        kiia_process_img($img);
-    }
-    return $doc;
-}
-
-function kiia_process_img($img) {
-    if (!($srcset = $img->getAttribute('srcset'))) {
-        return;
-    }
-    $src = null;
-    $size = null;
-    foreach(explode(', ', $srcset) as $def) {
-        $def = explode(' ', $def, 2);
-        if (sizeof($def) != 2 || !$def[0] || !$def[1]) {
-            continue;
-        }
-        if ($src === null || (float) $def[1] > (float) $size) {
-            list($src, $size) = $def;
-        }
-    }
-    if ($src) {
-        $img->setAttribute('src', $src);
-    }
-}
-
 // Add a meta box to set published status.
 add_action('add_meta_boxes', 'kiia_add_meta_box');
 add_action('save_post', 'kiia_save_meta_box', 0, 2);
-add_action('save_post', 'kiia_save_post', 0, 2);
 add_action('option_instant-articles-option-publishing', 'kiia_option_ia_publishing', 10, 2);
 
 function kiia_add_meta_box() {
@@ -89,16 +55,10 @@ function kiia_save_meta_box($post_id, $post) {
     update_post_meta($post_id, 'kiia_published', !empty($_POST['kiia_published']));
 }
 
-function kiia_save_post($post_id, $post) {
-    if (get_post_meta($post_id, 'kiia_published', true)) {
-        return;
-    }
-
-    $GLOBALS['kiia_prevent_publish'] = true;
-}
-
 function kiia_option_ia_publishing($value, $option) {
-    if (empty($GLOBALS['kiia_prevent_publish'])) {
+    if (!is_singular('post')
+        || get_post_meta(get_queried_object_id(), 'kiia_published', true)
+    ) {
         return $value;
     }
 
